@@ -31,7 +31,39 @@ class ctn_i2c :
             val |= (d << (8 * (byteCount - i - 1)))
             data >>= 8
         return val
-
+    
+    def readBit(self, reg, bitNum):
+        b = self.readU8(reg)
+        data = b & (1 << bitNum)
+        return data
+    
+    def writeBit(self, reg, bitNum, data):
+        b = self.readU8(reg)
+        
+        if data != 0:
+            b = (b | (1 << bitNum))
+        else:
+            b = (b & ~(1 << bitNum))
+            
+        return self.write8(reg, b)
+    
+    def writeBits(self, reg, bitStart, length, data):
+        #      010 value to write
+        # 76543210 bit numbers
+        #    xxx   args: bitStart=4, length=3
+        # 00011100 mask byte
+        # 10101111 original value (sample)
+        # 10100011 original & ~mask
+        # 10101011 masked | value
+        b = self.readU8(reg)
+        mask = ((1 << length) - 1) << (bitStart - length + 1)
+        data <<= (bitStart - length + 1)
+        data &= mask
+        b &= ~(mask)
+        b |= data
+            
+        return self.write8(reg, b)
+            
     def write8(self, reg, value):
         # Writes an 8-bit value to the specified register/address
         try:
