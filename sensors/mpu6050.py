@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # Python Standard Library Imports
-pass
+import time
 
 # External Imports
 pass
@@ -375,8 +375,8 @@ class MPU6050:
     MPU6050_DMP_MEMORY_BANK_SIZE  = 256
     MPU6050_DMP_MEMORY_CHUNK_SIZE = 16
     
-    MPU6050_DMP_CODE_SIZE         = 1928    # dmpMemory[]
-    MPU6050_DMP_CONFIG_SIZE       = 191     # dmpConfig[]
+    MPU6050_DMP_CODE_SIZE         = 1929    # dmpMemory[]
+    MPU6050_DMP_CONFIG_SIZE       = 192     # dmpConfig[]
     MPU6050_DMP_UPDATES_SIZE      = 47      # dmpUpdates[]
     # ====================================================================================================
     # | Default MotionApps v2.0 42-byte FIFO packet structure:                                           |
@@ -593,9 +593,9 @@ class MPU6050:
         self.setAccelOffsetY(config.accelerometer_offset['y'])
         self.setAccelOffsetZ(config.accelerometer_offset['z'])
         
-        self.setGyroOffsetX(config.gyroscope_offset['x'])
-        self.setGyroOffsetY(config.gyroscope_offset['y'])
-        self.setGyroOffsetZ(config.gyroscope_offset['z'])   
+        self.setXGyroOffsetUser(config.gyroscope_offset['x'])
+        self.setYGyroOffsetUser(config.gyroscope_offset['y'])
+        self.setZGyroOffsetUser(config.gyroscope_offset['z'])   
         
         # Low-Pass Filter Configuration
         #
@@ -644,8 +644,11 @@ class MPU6050:
     def readGyroOffsetX(self):
         result = self.i2c.readS16(self.MPU6050_RA_XG_OFFS_USRH)
         return result        
-        
-    def setGyroOffsetX(self, value):
+    
+    def setXGyroOffset(self, offset):
+        self.i2c.writeBits(self.MPU6050_RA_XG_OFFS_TC, self.MPU6050_TC_OFFSET_BIT, self.MPU6050_TC_OFFSET_LENGTH, offset)
+    
+    def setXGyroOffsetUser(self, value):
         self.i2c.write8(self.MPU6050_RA_XG_OFFS_USRH, value >> 8)
         self.i2c.write8(self.MPU6050_RA_XG_OFFS_USRL, value & 0xFF) 
         return True
@@ -653,8 +656,11 @@ class MPU6050:
     def readGyroOffsetY(self):
         result = self.i2c.readS16(self.MPU6050_RA_YG_OFFS_USRH)
         return result        
+
+    def setYGyroOffset(self, offset):
+        self.i2c.writeBits(self.MPU6050_RA_YG_OFFS_TC, self.MPU6050_TC_OFFSET_BIT, self.MPU6050_TC_OFFSET_LENGTH, offset)
         
-    def setGyroOffsetY(self, value):
+    def setYGyroOffsetUser(self, value):
         self.i2c.write8(self.MPU6050_RA_YG_OFFS_USRH, value >> 8)
         self.i2c.write8(self.MPU6050_RA_YG_OFFS_USRL, value & 0xFF) 
         return True
@@ -662,12 +668,15 @@ class MPU6050:
     def readGyroOffsetZ(self):
         result = self.i2c.readS16(self.MPU6050_RA_ZG_OFFS_USRH)
         return result        
+
+    def setZGyroOffset(self, offset):
+        self.i2c.writeBits(self.MPU6050_RA_ZG_OFFS_TC, self.MPU6050_TC_OFFSET_BIT, self.MPU6050_TC_OFFSET_LENGTH, offset)
         
-    def setGyroOffsetZ(self, value):
+    def setZGyroOffsetUser(self, value):
         self.i2c.write8(self.MPU6050_RA_ZG_OFFS_USRH, value >> 8)
         self.i2c.write8(self.MPU6050_RA_ZG_OFFS_USRL, value & 0xFF) 
         return True
- 
+        
     def readTemperature(self):
         # The temperature sensor is -40 to +85 degrees Celsius.
         # It is a signed integer.
@@ -702,6 +711,15 @@ class MPU6050:
     def setSleepEnabled(self, status):
         self.i2c.writeBit(self.MPU6050_RA_PWR_MGMT_1, self.MPU6050_PWR1_SLEEP_BIT, status)
     
+    def setIntEnabled(self, status):
+        self.i2c.write8(self.MPU6050_RA_INT_ENABLE, status)
+    
+    def setRate(self, rate):
+        self.i2c.write8(self.MPU6050_RA_SMPLRT_DIV, rate)
+    
+    def setExternalFrameSync(self, sync):
+        self.i2c.writeBits(self.MPU6050_RA_CONFIG, self.MPU6050_CFG_EXT_SYNC_SET_BIT, self.MPU6050_CFG_EXT_SYNC_SET_LENGTH, sync)
+    
     def writeBytes(self, regAddr, length, data):
         i = 0
         while i < length:
@@ -712,6 +730,73 @@ class MPU6050:
     
     def setClockSource(self, source):
         self.i2c.writeBits(self.MPU6050_RA_PWR_MGMT_1, self.MPU6050_PWR1_CLKSEL_BIT, self.MPU6050_PWR1_CLKSEL_LENGTH, source)
+    
+    def setDLPFMode(self, mode):
+        self.i2c.writeBits(self.MPU6050_RA_CONFIG, self.MPU6050_CFG_DLPF_CFG_BIT, self.MPU6050_CFG_DLPF_CFG_LENGTH, mode)
+    
+    def setFullScaleGyroRange(self, range):
+        self.i2c.writeBits(self.MPU6050_RA_GYRO_CONFIG, self.MPU6050_GCONFIG_FS_SEL_BIT, self.MPU6050_GCONFIG_FS_SEL_LENGTH, range)
+    
+    def setDMPConfig1(self, config):
+        self.i2c.write8(self.MPU6050_RA_DMP_CFG_1, config)
+        
+    def setDMPConfig2(self, config):
+        self.i2c.write8(self.MPU6050_RA_DMP_CFG_2, config)
+
+    def getOTPBankValid(self):
+        result = self.i2c.readBit(self.MPU6050_RA_XG_OFFS_TC, self.MPU6050_TC_OTP_BNK_VLD_BIT)
+        return result
+        
+    def setOTPBankValid(self, status):
+        self.i2c.writeBit(self.MPU6050_RA_XG_OFFS_TC, self.MPU6050_TC_OTP_BNK_VLD_BIT, status)
+    
+    def setSlaveAddress(self, num, address):
+        self.i2c.write8(self.MPU6050_RA_I2C_SLV0_ADDR + num * 3, address)
+    
+    def setI2CMasterModeEnabled(self, status):
+        self.i2c.writeBit(self.MPU6050_RA_USER_CTRL, self.MPU6050_USERCTRL_I2C_MST_EN_BIT, status)
+    
+    def resetFIFO(self):
+        self.i2c.writeBit(self.MPU6050_RA_USER_CTRL, self.MPU6050_USERCTRL_FIFO_RESET_BIT, True)
+    
+    def setMotionDetectionThreshold(self, treshold):
+        self.i2c.write8(self.MPU6050_RA_MOT_THR, treshold)
+    
+    def setZeroMotionDetectionThreshold(self, treshold):
+        self.i2c.write8(self.MPU6050_RA_ZRMOT_THR, treshold)
+    
+    def setMotionDetectionDuration(self, duration):
+        self.i2c.write8(self.MPU6050_RA_MOT_DUR, duration)
+    
+    def setZeroMotionDetectionDuration(self, duration):
+        self.i2c.write8(self.MPU6050_RA_ZRMOT_DUR, duration)
+    
+    def setFIFOEnabled(self, status):
+        self.i2c.writeBit(self.MPU6050_RA_USER_CTRL, self.MPU6050_USERCTRL_FIFO_EN_BIT, status)
+    
+    def getFIFOCount(self):
+        result = self.i2c.readU16(self.MPU6050_RA_FIFO_COUNTH)
+        return result
+
+    def getFIFOBytes(self, data, length):
+        self.i2c.readBytes(self.MPU6050_RA_FIFO_R_W, length, data)
+        
+    def readMemoryByte(self):
+        result = self.i2c.readU8(self.MPU6050_RA_MEM_R_W)
+        return result
+    
+    def getIntStatus(self):
+        result = self.i2c.readU8(self.MPU6050_RA_INT_STATUS)
+        return result
+    
+    def resetI2CMaster(self):
+        self.i2c.writeBit(self.MPU6050_RA_USER_CTRL, self.MPU6050_USERCTRL_I2C_MST_RESET_BIT, True)
+    
+    def setDMPEnabled(self, status):
+        self.i2c.writeBit(self.MPU6050_RA_USER_CTRL, self.MPU6050_USERCTRL_DMP_EN_BIT, status)
+    
+    def resetDMP(self):
+        self.i2c.writeBit(self.MPU6050_RA_USER_CTRL, self.MPU6050_USERCTRL_DMP_RESET_BIT, True)
     
     def setMemoryBank(self, bank, prefetchEnabled = False, userBank = False):
         bank &= 0x1F
@@ -724,25 +809,27 @@ class MPU6050:
         self.i2c.write8(self.MPU6050_RA_BANK_SEL, bank)
         return True
     
-    def writeMemoryBlock(self, data, dataSize, bank = 0, address = 0, verify = False):
-        self.setMemoryBank(bank)
+    def setMemoryStartAddress(self, address):
         self.i2c.write8(self.MPU6050_RA_MEM_START_ADDR, address)
+    
+    def writeMemoryBlock(self, data, dataSize, bank = 0, address = 0, verify = True):
+        self.setMemoryBank(bank)
+        self.setMemoryStartAddress(address)
         
-        chunkSize = self.MPU6050_DMP_MEMORY_CHUNK_SIZE
         i = 0
-        while i < dataSize: 
-            # increase byte index
-            i += 1        
-            # make sure we don't go past the data size
-            if (i + chunkSize > dataSize):
-                chunkSize = dataSize - i
-                
-            # make sure this chunk doesn't go past the bank boundary (256 bytes)
-            if (chunkSize > 256 - address):
-                chunkSize = 256 - address             
-            
+        while i < dataSize:  
             self.i2c.write8(self.MPU6050_RA_MEM_R_W, data[i])
 
+            # Verify
+            if verify:
+                self.setMemoryBank(bank)
+                self.setMemoryStartAddress(address)
+                result = self.i2c.readU8(self.MPU6050_RA_MEM_R_W)
+                if result != data[i]:
+                    print(data[i]),
+                    print(result),
+                    print(address)
+            
             # reset adress to 0 after reaching 256
             if (address + 1 > 255):
                 address = 0
@@ -752,35 +839,37 @@ class MPU6050:
             else:
                 address += 1
             
-            self.i2c.write8(self.MPU6050_RA_MEM_START_ADDR, address)
+            self.setMemoryStartAddress(address)
 
+            # increase byte index
+            i += 1
+            
         return True
     
     def writeDMPConfigurationSet(self, data, dataSize):
         # config set data is a long string of blocks with the following structure:
         # [bank] [offset] [length] [byte[0], byte[1], ..., byte[length]]
-        i = 0
-        while i < dataSize:
-            i += 1
-            bank = data[i]
-            i += 1
-            offset = data[i]
-            i += 1
-            length = data[i]
-            
+        pos = 0
+        while pos < dataSize:
+            j = 0
+            dmpConfSet = []
+            while ((j < 4) or (j < dmpConfSet[2] + 3)):
+                dmpConfSet.append(data[pos])
+                j += 1
+                pos += 1
+         
             # write data or perform special action
-            if length > 0:
+            if dmpConfSet[2] > 0:
                 # regular block of data to write  
-                self.writeMemoryBlock(data, length, bank, offset)
-                i += length;
+                self.writeMemoryBlock(dmpConfSet, dmpConfSet[2], dmpConfSet[0], dmpConfSet[1])
             else:
                 # special instruction
                 # NOTE: this kind of behavior (what and when to do certain things)
                 # is totally undocumented. This code is in here based on observed
                 # behavior only, and exactly why (or even whether) it has to be here
                 # is anybody's guess for now.
-                i += 1
-                special = data[i]
+                s_pos = pos + 1
+                special = data[s_pos]
                 
                 if special == 0x01:
                     # enable DMP-related interrupts
@@ -788,21 +877,204 @@ class MPU6050:
                     #setIntZeroMotionEnabled(true);
                     #setIntFIFOBufferOverflowEnabled(true);
                     #setIntDMPEnabled(true);
-                    self.i2c.write8(self.MPU6050_RA_INT_ENABLE, 0x32);  # single operation
-        return True
+                    self.i2c.write8(self.MPU6050_RA_INT_ENABLE, 0x32);  # single operation            
+    
+    def dmpGetYawPitchRoll(self):
+        pass
             
     def dmpInitialize(self):
+        # Resetting MPU6050
+        self.reset()
+        time.sleep(0.05) # wait after reset
+        
+        # Disable sleep mode
+        self.setSleepEnabled(False)
+
+        # get MPU hardware revision
+        self.setMemoryBank(0x10, True, True) # Selecting user bank 16
+        self.setMemoryStartAddress(0x06) # Selecting memory byte 6
+        hwRevision = self.readMemoryByte() # Checking hardware revision
+        print('Revision @ user[16][6] ='),
+        print(hex(hwRevision))
+        self.setMemoryBank(0, False, False) # Resetting memory bank selection to 0
+        
+        # check OTP bank valid
+        if self.getOTPBankValid():
+            print('OTP bank is valid')
+        else:
+            print('OTP bank is invalid')
+        
         # get X/Y/Z gyro offsets
         xgOffset = self.readGyroOffsetX()
         ygOffset = self.readGyroOffsetY()
         zgOffset = self.readGyroOffsetZ()
         
+        # setup weird slave stuff (?)
+        self.setSlaveAddress(0, 0x7F) # Setting slave 0 address to 0x7F
+        self.setI2CMasterModeEnabled(False) # Disabling I2C Master mode
+        self.setSlaveAddress(0, 0x68) # Setting slave 0 address to 0x68 (self)
+        self.resetI2CMaster() # Resetting I2C Master control
+        time.sleep(0.03)
+        
         # load DMP code into memory banks
-        #self.writeMemoryBlock(self.dmpMemory, self.MPU6050_DMP_CODE_SIZE)
+        self.writeMemoryBlock(self.dmpMemory, self.MPU6050_DMP_CODE_SIZE)
+        print('Success! DMP code written and verified')
         
         # write DMP configuration
-        #self.writeDMPConfigurationSet(self.dmpConfig, self.MPU6050_DMP_CONFIG_SIZE)
+        self.writeDMPConfigurationSet(self.dmpConfig, self.MPU6050_DMP_CONFIG_SIZE)
+        print('Success! DMP configuration written and verified')
         
         # Setting clock source to Z Gyro
-        #self.setClockSource(self.MPU6050_CLOCK_PLL_ZGYRO)
+        self.setClockSource(self.MPU6050_CLOCK_PLL_ZGYRO)
         
+        # Setting DMP and FIFO_OFLOW interrupts enabled
+        self.setIntEnabled(0x12)
+        
+        # Setting sample rate to 200Hz
+        self.setRate(4) # 1khz / (1 + 4) = 200 Hz
+        
+        # Setting external frame sync to TEMP_OUT_L[0]
+        self.setExternalFrameSync(self.MPU6050_EXT_SYNC_TEMP_OUT_L)
+        
+        # Setting DLPF bandwidth to 42Hz
+        self.setDLPFMode(self.MPU6050_DLPF_BW_42)
+        
+        # Setting gyro sensitivity to +/- 2000 deg/sec
+        self.setFullScaleGyroRange(self.MPU6050_GYRO_FS_2000)
+        
+        # Setting DMP configuration bytes (function unknown)
+        self.setDMPConfig1(0x03)
+        self.setDMPConfig2(0x00)
+        
+        # Clearing OTP Bank flag
+        self.setOTPBankValid(False)
+        
+        # Setting X/Y/Z gyro offsets to previous values
+        self.setXGyroOffset(xgOffset);
+        self.setYGyroOffset(ygOffset);
+        self.setZGyroOffset(zgOffset);   
+        
+        # Setting X/Y/Z gyro user offsets to zero
+        self.setXGyroOffsetUser(0)
+        self.setYGyroOffsetUser(0)
+        self.setZGyroOffsetUser(0)  
+
+        # Writing final memory update 1/7 (function unknown)
+        pos = 0
+        j = 0
+        dmpUpdate = []
+        while ((j < 4) or (j < dmpUpdate[2] + 3)):
+            dmpUpdate.append(self.dmpUpdates[pos])
+            j += 1
+            pos += 1
+        
+        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1])
+        
+        # Writing final memory update 2/7 (function unknown)
+        j = 0
+        dmpUpdate = []
+        while ((j < 4) or (j < dmpUpdate[2] + 3)):
+            dmpUpdate.append(self.dmpUpdates[pos])
+            j += 1
+            pos += 1
+        
+        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1])
+        
+        # Resetting FIFO
+        self.resetFIFO()
+        
+        # Reading FIFO count
+        fifoCount = self.getFIFOCount()
+        print('Current FIFO count = %s' % fifoCount) 
+        fifoBuffer = 128
+        
+        # Setting motion detection threshold to 2
+        self.setMotionDetectionThreshold(2)
+        
+        # Setting zero-motion detection threshold to 156
+        self.setZeroMotionDetectionThreshold(156)
+        
+        # Setting motion detection duration to 80
+        self.setMotionDetectionDuration(80)
+        
+        # Setting zero-motion detection duration to 0
+        self.setZeroMotionDetectionDuration(0)
+        
+        # Resetting FIFO
+        self.resetFIFO()  
+
+        # Enabling FIFO
+        self.setFIFOEnabled(True)
+        
+        # Enabling DMP
+        self.setDMPEnabled(True)
+        
+        # Resetting DMP
+        self.resetDMP()
+        
+        # Writing final memory update 3/7 (function unknown)
+        j = 0
+        dmpUpdate = []
+        while ((j < 4) or (j < dmpUpdate[2] + 3)):
+            dmpUpdate.append(self.dmpUpdates[pos])
+            j += 1
+            pos += 1
+        
+        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1])
+        
+        # Writing final memory update 4/7 (function unknown)
+        j = 0
+        dmpUpdate = []
+        while ((j < 4) or (j < dmpUpdate[2] + 3)):
+            dmpUpdate.append(self.dmpUpdates[pos])
+            j += 1
+            pos += 1
+        
+        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1])
+        
+        # Writing final memory update 5/7 (function unknown)
+        j = 0
+        dmpUpdate = []
+        while ((j < 4) or (j < dmpUpdate[2] + 3)):
+            dmpUpdate.append(self.dmpUpdates[pos])
+            j += 1
+            pos += 1
+        
+        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1])
+        
+        # Waiting for FIFO count > 2
+        while (self.getFIFOCount() < 3):
+            fifoCount = self.getFIFOCount()
+        print('Current FIFO count ='),
+        print(fifoCount)
+        
+        # Reading FIFO data
+        self.getFIFOBytes(fifoBuffer, fifoCount)
+        
+        # Writing final memory update 6/7 (function unknown)
+        time.sleep(0.04)
+        j = 0
+        dmpUpdate = []
+        while ((j < 4) or (j < dmpUpdate[2] + 3)):
+            dmpUpdate.append(self.dmpUpdates[pos])
+            j += 1
+            pos += 1
+        
+        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1])        
+       
+        # Writing final memory update 7/7 (function unknown)
+        j = 0
+        dmpUpdate = []
+        while ((j < 4) or (j < dmpUpdate[2] + 3)):
+            dmpUpdate.append(self.dmpUpdates[pos])
+            j += 1
+            pos += 1
+        
+        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1])
+        
+        # Disabling DMP (you turn it on later)
+        self.setDMPEnabled(False)  
+        
+        # Resetting FIFO and clearing INT status one last time
+        self.resetFIFO()
+        self.getIntStatus()

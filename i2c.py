@@ -63,7 +63,11 @@ class ctn_i2c :
         b |= data
             
         return self.write8(reg, b)
-            
+    
+    def readBytes(self, reg, length, data):
+        # in development
+        pass
+    
     def write8(self, reg, value):
         # Writes an 8-bit value to the specified register/address
         try:
