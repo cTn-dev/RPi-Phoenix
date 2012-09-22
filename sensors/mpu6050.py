@@ -579,6 +579,8 @@ class MPU6050:
         0x01,   0x62,   0x02,   0x00, 0x00,
         0x00,   0x60,   0x04,   0x00, 0x40, 0x00, 0x00]
     
+    # Setting up internal 42-byte (default) DMP packet buffer
+    dmpPacketSize = 42
     
     # construct a new object with the I2C address of the MPU6050
     def __init__(self, address = MPU6050_DEFAULT_ADDRESS, debug = False):
@@ -778,8 +780,9 @@ class MPU6050:
         result = self.i2c.readU16(self.MPU6050_RA_FIFO_COUNTH)
         return result
 
-    def getFIFOBytes(self, data, length):
-        self.i2c.readBytes(self.MPU6050_RA_FIFO_R_W, length, data)
+    def getFIFOBytes(self,length):
+        result = self.i2c.readBytes(self.MPU6050_RA_FIFO_R_W, length)
+        return result
         
     def readMemoryByte(self):
         result = self.i2c.readU8(self.MPU6050_RA_MEM_R_W)
@@ -878,6 +881,15 @@ class MPU6050:
                     #setIntFIFOBufferOverflowEnabled(true);
                     #setIntDMPEnabled(true);
                     self.i2c.write8(self.MPU6050_RA_INT_ENABLE, 0x32);  # single operation            
+    
+    def dmpGetFIFOPacketSize(self):
+        return self.dmpPacketSize
+    
+    def dmpGetQuaternion(self):
+        pass
+        
+    def dmpGetEuler(self):
+        pass
     
     def dmpGetYawPitchRoll(self):
         pass
@@ -1049,10 +1061,9 @@ class MPU6050:
         print(fifoCount)
         
         # Reading FIFO data
-        self.getFIFOBytes(fifoBuffer, fifoCount)
+        self.getFIFOBytes(fifoCount)
         
         # Writing final memory update 6/7 (function unknown)
-        time.sleep(0.04)
         j = 0
         dmpUpdate = []
         while ((j < 4) or (j < dmpUpdate[2] + 3)):
@@ -1074,6 +1085,9 @@ class MPU6050:
         
         # Disabling DMP (you turn it on later)
         self.setDMPEnabled(False)  
+        
+        # Setting up internal 42-byte (default) DMP packet buffer
+        self.dmpPacketSize = 42
         
         # Resetting FIFO and clearing INT status one last time
         self.resetFIFO()

@@ -64,9 +64,16 @@ class ctn_i2c :
             
         return self.write8(reg, b)
     
-    def readBytes(self, reg, length, data):
-        # in development
-        pass
+    def readBytes(self, reg, length):
+        output = []
+        
+        i = 0
+        while i < length:
+            output.append(self.readU8(reg))
+            i += 1
+            
+        return output
+        
     
     def write8(self, reg, value):
         # Writes an 8-bit value to the specified register/address
@@ -115,7 +122,7 @@ class ctn_i2c :
         # Reads an unsigned 16-bit value from the I2C device
         try:
             hibyte = self.bus.read_byte_data(self.address, reg)
-            result = (hibyte << 8) + self.bus.read_byte_data(self.address, reg+1)
+            result = (hibyte << 8) + self.bus.read_byte_data(self.address, reg + 1)
             if self.debug:
                 print ("I2C: Device 0x%02X returned 0x%04X from reg 0x%02X" % (self.address, result & 0xFFFF, reg))
             return result
@@ -129,7 +136,7 @@ class ctn_i2c :
             hibyte = self.bus.read_byte_data(self.address, reg)
             if hibyte > 127:
                 hibyte -= 256
-            result = (hibyte << 8) + self.bus.read_byte_data(self.address, reg+1)
+            result = (hibyte << 8) + self.bus.read_byte_data(self.address, reg + 1)
             if self.debug:
                 print ("I2C: Device 0x%02X returned 0x%04X from reg 0x%02X" % (self.address, result & 0xFFFF, reg))
             return result
