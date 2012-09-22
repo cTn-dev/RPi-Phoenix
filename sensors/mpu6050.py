@@ -588,6 +588,7 @@ class MPU6050:
         self.address = address
         self.debug = debug     
         # disable sleep mode
+        """
         self.setSleepEnabled(False)
         
         # Offset Settings
@@ -614,7 +615,8 @@ class MPU6050:
         # 7        |   -- Reserved --   |   -- Reserved --   | Reserved        
         
         # Binary value used for Maggie is 4
-        self.i2c.write8(self.MPU6050_RA_CONFIG, 0b000100)        
+        self.i2c.write8(self.MPU6050_RA_CONFIG, 0b000100)   
+        """
      
     def readAccelOffsetX(self):
         result = self.i2c.readS16(self.MPU6050_RA_XA_OFFS_H)
@@ -828,16 +830,17 @@ class MPU6050:
                 self.setMemoryBank(bank)
                 self.setMemoryStartAddress(address)
                 result = self.i2c.readU8(self.MPU6050_RA_MEM_R_W)
+                
                 if result != data[i]:
                     print(data[i]),
                     print(result),
                     print(address)
             
-            # reset adress to 0 after reaching 256
-            if (address + 1 > 255):
+            # reset adress to 0 after reaching 255
+            if address == 255:
                 address = 0
                 bank += 1
-                
+
                 self.setMemoryBank(bank)
             else:
                 address += 1
@@ -849,7 +852,7 @@ class MPU6050:
             
         return True
     
-    def writeDMPConfigurationSet(self, data, dataSize):
+    def writeDMPConfigurationSet(self, data, dataSize, bank = 0, address = 0, verify = False):
         # config set data is a long string of blocks with the following structure:
         # [bank] [offset] [length] [byte[0], byte[1], ..., byte[length]]
         pos = 0
@@ -864,17 +867,14 @@ class MPU6050:
             # write data or perform special action
             if dmpConfSet[2] > 0:
                 # regular block of data to write  
-                self.writeMemoryBlock(dmpConfSet, dmpConfSet[2], dmpConfSet[0], dmpConfSet[1])
+                self.writeMemoryBlock(dmpConfSet, dmpConfSet[2], dmpConfSet[0], dmpConfSet[1], verify)
             else:
                 # special instruction
                 # NOTE: this kind of behavior (what and when to do certain things)
                 # is totally undocumented. This code is in here based on observed
                 # behavior only, and exactly why (or even whether) it has to be here
                 # is anybody's guess for now.
-                s_pos = pos + 1
-                special = data[s_pos]
-                
-                if special == 0x01:
+                if dmpConfSet[3] == 0x01:
                     # enable DMP-related interrupts
                     
                     #setIntZeroMotionEnabled(true);
@@ -929,11 +929,11 @@ class MPU6050:
         time.sleep(0.03)
         
         # load DMP code into memory banks
-        self.writeMemoryBlock(self.dmpMemory, self.MPU6050_DMP_CODE_SIZE)
+        self.writeMemoryBlock(self.dmpMemory, self.MPU6050_DMP_CODE_SIZE, 0, 0, True)
         print('Success! DMP code written and verified')
         
         # write DMP configuration
-        self.writeDMPConfigurationSet(self.dmpConfig, self.MPU6050_DMP_CONFIG_SIZE)
+        self.writeDMPConfigurationSet(self.dmpConfig, self.MPU6050_DMP_CONFIG_SIZE, 0, 0, True)
         print('Success! DMP configuration written and verified')
         
         # Setting clock source to Z Gyro
@@ -980,7 +980,7 @@ class MPU6050:
             j += 1
             pos += 1
         
-        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1])
+        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
         
         # Writing final memory update 2/7 (function unknown)
         j = 0
@@ -990,15 +990,14 @@ class MPU6050:
             j += 1
             pos += 1
         
-        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1])
+        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
         
         # Resetting FIFO
         self.resetFIFO()
         
         # Reading FIFO count
         fifoCount = self.getFIFOCount()
-        print('Current FIFO count = %s' % fifoCount) 
-        fifoBuffer = 128
+        print('Current FIFO count = %s' % fifoCount)
         
         # Setting motion detection threshold to 2
         self.setMotionDetectionThreshold(2)
@@ -1032,7 +1031,7 @@ class MPU6050:
             j += 1
             pos += 1
         
-        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1])
+        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
         
         # Writing final memory update 4/7 (function unknown)
         j = 0
@@ -1042,7 +1041,7 @@ class MPU6050:
             j += 1
             pos += 1
         
-        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1])
+        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
         
         # Writing final memory update 5/7 (function unknown)
         j = 0
@@ -1052,7 +1051,7 @@ class MPU6050:
             j += 1
             pos += 1
         
-        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1])
+        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
         
         # Waiting for FIFO count > 2
         while (self.getFIFOCount() < 3):
@@ -1071,7 +1070,7 @@ class MPU6050:
             j += 1
             pos += 1
         
-        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1])        
+        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)        
        
         # Writing final memory update 7/7 (function unknown)
         j = 0
@@ -1081,7 +1080,7 @@ class MPU6050:
             j += 1
             pos += 1
         
-        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1])
+        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
         
         # Disabling DMP (you turn it on later)
         self.setDMPEnabled(False)  
