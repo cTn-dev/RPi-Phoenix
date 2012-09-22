@@ -835,7 +835,7 @@ class MPU6050:
                     print(data[i]),
                     print(result),
                     print(address)
-            
+                    
             # reset adress to 0 after reaching 255
             if address == 255:
                 address = 0
@@ -849,8 +849,6 @@ class MPU6050:
 
             # increase byte index
             i += 1
-            
-        return True
     
     def writeDMPConfigurationSet(self, data, dataSize, bank = 0, address = 0, verify = False):
         # config set data is a long string of blocks with the following structure:
@@ -867,7 +865,7 @@ class MPU6050:
             # write data or perform special action
             if dmpConfSet[2] > 0:
                 # regular block of data to write  
-                self.writeMemoryBlock(dmpConfSet, dmpConfSet[2], dmpConfSet[0], dmpConfSet[1], verify)
+                self.writeMemoryBlock(dmpConfSet[3:], dmpConfSet[2], dmpConfSet[0], dmpConfSet[1], verify)
             else:
                 # special instruction
                 # NOTE: this kind of behavior (what and when to do certain things)
@@ -906,15 +904,17 @@ class MPU6050:
         self.setMemoryBank(0x10, True, True) # Selecting user bank 16
         self.setMemoryStartAddress(0x06) # Selecting memory byte 6
         hwRevision = self.readMemoryByte() # Checking hardware revision
-        print('Revision @ user[16][6] ='),
-        print(hex(hwRevision))
+        #print('Revision @ user[16][6] ='),
+        #print(hex(hwRevision))
         self.setMemoryBank(0, False, False) # Resetting memory bank selection to 0
         
         # check OTP bank valid
+        """
         if self.getOTPBankValid():
             print('OTP bank is valid')
         else:
             print('OTP bank is invalid')
+        """    
         
         # get X/Y/Z gyro offsets
         xgOffset = self.readGyroOffsetX()
@@ -930,11 +930,11 @@ class MPU6050:
         
         # load DMP code into memory banks
         self.writeMemoryBlock(self.dmpMemory, self.MPU6050_DMP_CODE_SIZE, 0, 0, True)
-        print('Success! DMP code written and verified')
+        #print('Success! DMP code written and verified')
         
         # write DMP configuration
         self.writeDMPConfigurationSet(self.dmpConfig, self.MPU6050_DMP_CONFIG_SIZE, 0, 0, True)
-        print('Success! DMP configuration written and verified')
+        #print('Success! DMP configuration written and verified')
         
         # Setting clock source to Z Gyro
         self.setClockSource(self.MPU6050_CLOCK_PLL_ZGYRO)
@@ -997,7 +997,7 @@ class MPU6050:
         
         # Reading FIFO count
         fifoCount = self.getFIFOCount()
-        print('Current FIFO count = %s' % fifoCount)
+        #print('Current FIFO count = %s' % fifoCount)
         
         # Setting motion detection threshold to 2
         self.setMotionDetectionThreshold(2)
@@ -1056,8 +1056,8 @@ class MPU6050:
         # Waiting for FIFO count > 2
         while (self.getFIFOCount() < 3):
             fifoCount = self.getFIFOCount()
-        print('Current FIFO count ='),
-        print(fifoCount)
+        #print('Current FIFO count ='),
+        #print(fifoCount)
         
         # Reading FIFO data
         self.getFIFOBytes(fifoCount)
