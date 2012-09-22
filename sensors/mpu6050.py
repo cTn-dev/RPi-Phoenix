@@ -980,7 +980,7 @@ class MPU6050:
             j += 1
             pos += 1
         
-        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
+        self.writeMemoryBlock(dmpUpdate[3:], dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
         
         # Writing final memory update 2/7 (function unknown)
         j = 0
@@ -990,7 +990,7 @@ class MPU6050:
             j += 1
             pos += 1
         
-        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
+        self.writeMemoryBlock(dmpUpdate[3:], dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
         
         # Resetting FIFO
         self.resetFIFO()
@@ -1031,7 +1031,7 @@ class MPU6050:
             j += 1
             pos += 1
         
-        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
+        self.writeMemoryBlock(dmpUpdate[3:], dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
         
         # Writing final memory update 4/7 (function unknown)
         j = 0
@@ -1041,7 +1041,7 @@ class MPU6050:
             j += 1
             pos += 1
         
-        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
+        self.writeMemoryBlock(dmpUpdate[3:], dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
         
         # Writing final memory update 5/7 (function unknown)
         j = 0
@@ -1051,7 +1051,7 @@ class MPU6050:
             j += 1
             pos += 1
         
-        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
+        self.writeMemoryBlock(dmpUpdate[3:], dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
         
         # Waiting for FIFO count > 2
         while (self.getFIFOCount() < 3):
@@ -1070,7 +1070,7 @@ class MPU6050:
             j += 1
             pos += 1
         
-        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)        
+        self.writeMemoryBlock(dmpUpdate[3:], dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)        
        
         # Writing final memory update 7/7 (function unknown)
         j = 0
@@ -1080,7 +1080,7 @@ class MPU6050:
             j += 1
             pos += 1
         
-        self.writeMemoryBlock(dmpUpdate, dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
+        self.writeMemoryBlock(dmpUpdate[3:], dmpUpdate[2], dmpUpdate[0], dmpUpdate[1], True)
         
         # Disabling DMP (you turn it on later)
         self.setDMPEnabled(False)  
