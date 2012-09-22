@@ -2,6 +2,7 @@
 
 # Python Standard Library Imports
 import time
+import math
 
 # External Imports
 pass
@@ -560,8 +561,10 @@ class MPU6050:
         0x07,   0x46,   0x01,   0x9A,                     # CFG_GYRO_SOURCE inv_send_gyro
         0x07,   0x47,   0x04,   0xF1, 0x28, 0x30, 0x38,   # CFG_9 inv_send_gyro -> inv_construct3_fifo
         0x07,   0x6C,   0x04,   0xF1, 0x28, 0x30, 0x38,   # CFG_12 inv_send_accel -> inv_construct3_fifo
-        0x02,   0x16,   0x02,   0x00, 0x01                # D_0_22 inv_set_fifo_rate
+        0x02,   0x16,   0x02,   0x00, 0x09                # D_0_22 inv_set_fifo_rate
 
+        # cTn - i changed the 0x01 value to 0x09 (because the output was super noisy)
+        
         # This very last 0x01 WAS a 0x09, which drops the FIFO rate down to 20 Hz. 0x07 is 25 Hz,
         # 0x01 is 100Hz. Going faster than 100Hz (0x00=200Hz) tends to result in very noisy data.
         # DMP output frequency is calculated easily using this equation: (200Hz / (1 + value))
@@ -883,15 +886,38 @@ class MPU6050:
     def dmpGetFIFOPacketSize(self):
         return self.dmpPacketSize
     
-    def dmpGetQuaternion(self):
-        pass
+    def dmpGetQuaternion(self, packet):
+        data = []
         
-    def dmpGetEuler(self):
+        # We are dealing with signed bytes
+        if packet[0] > 127:
+            packet[0] -= 256
+
+        if packet[4] > 127:
+            packet[4] -= 256
+            
+        if packet[8] > 127:
+            packet[8] -= 256            
+          
+        if packet[12] > 127:
+            packet[12] -= 256          
+            
+        data.append((packet[0] << 8) + packet[1])   # W
+        data.append((packet[4] << 8) + packet[5])   # X
+        data.append((packet[8] << 8) + packet[9])   # Y
+        data.append((packet[12] << 8) + packet[13]) # Z   
+        
+        return data
+    
+    def dmpGetEuler(self, q):
         pass
     
-    def dmpGetYawPitchRoll(self):
+    def dmpGetGravity(self, q):
         pass
-            
+    
+    def dmpGetYawPitchRoll(self, q):
+       pass
+ 
     def dmpInitialize(self):
         # Resetting MPU6050
         self.reset()
