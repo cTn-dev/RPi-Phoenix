@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
 # Python Standard Library Imports
-import time
-import math
+from time import sleep
+from math import atan, atan2, sqrt
 
 # External Imports
 pass
@@ -561,9 +561,8 @@ class MPU6050:
         0x07,   0x46,   0x01,   0x9A,                     # CFG_GYRO_SOURCE inv_send_gyro
         0x07,   0x47,   0x04,   0xF1, 0x28, 0x30, 0x38,   # CFG_9 inv_send_gyro -> inv_construct3_fifo
         0x07,   0x6C,   0x04,   0xF1, 0x28, 0x30, 0x38,   # CFG_12 inv_send_accel -> inv_construct3_fifo
-        0x02,   0x16,   0x02,   0x00, 0x09                # D_0_22 inv_set_fifo_rate
+        0x02,   0x16,   0x02,   0x00, 0x13                # D_0_22 inv_set_fifo_rate
 
-        # cTn - i changed the 0x01 value to 0x09 (because the output was super noisy)
         
         # This very last 0x01 WAS a 0x09, which drops the FIFO rate down to 20 Hz. 0x07 is 25 Hz,
         # 0x01 is 100Hz. Going faster than 100Hz (0x00=200Hz) tends to result in very noisy data.
@@ -589,9 +588,9 @@ class MPU6050:
     def __init__(self, address = MPU6050_DEFAULT_ADDRESS, debug = False):
         self.i2c = ctn_i2c(address)
         self.address = address
-        self.debug = debug     
+        self.debug = debug   
+        
         # disable sleep mode
-        """
         self.setSleepEnabled(False)
         
         # Offset Settings
@@ -618,8 +617,7 @@ class MPU6050:
         # 7        |   -- Reserved --   |   -- Reserved --   | Reserved        
         
         # Binary value used for Maggie is 4
-        self.i2c.write8(self.MPU6050_RA_CONFIG, 0b000100)   
-        """
+        #self.i2c.write8(self.MPU6050_RA_CONFIG, 0b000100)   
      
     def readAccelOffsetX(self):
         result = self.i2c.readS16(self.MPU6050_RA_XA_OFFS_H)
@@ -800,6 +798,10 @@ class MPU6050:
     def resetI2CMaster(self):
         self.i2c.writeBit(self.MPU6050_RA_USER_CTRL, self.MPU6050_USERCTRL_I2C_MST_RESET_BIT, True)
     
+    def getDMPEnabled(self):
+        result = self.i2c.readBit(self.MPU6050_RA_USER_CTRL, self.MPU6050_USERCTRL_DMP_EN_BIT)
+        return result
+    
     def setDMPEnabled(self, status):
         self.i2c.writeBit(self.MPU6050_RA_USER_CTRL, self.MPU6050_USERCTRL_DMP_EN_BIT, status)
     
@@ -820,7 +822,7 @@ class MPU6050:
     def setMemoryStartAddress(self, address):
         self.i2c.write8(self.MPU6050_RA_MEM_START_ADDR, address)
     
-    def writeMemoryBlock(self, data, dataSize, bank = 0, address = 0, verify = True):
+    def writeMemoryBlock(self, data, dataSize, bank = 0, address = 0, verify = False):
         self.setMemoryBank(bank)
         self.setMemoryStartAddress(address)
         
@@ -887,8 +889,6 @@ class MPU6050:
         return self.dmpPacketSize
     
     def dmpGetQuaternion(self, packet):
-        data = []
-        
         # We are dealing with signed bytes
         if packet[0] > 127:
             packet[0] -= 256
@@ -901,11 +901,12 @@ class MPU6050:
           
         if packet[12] > 127:
             packet[12] -= 256          
-            
-        data.append((packet[0] << 8) + packet[1])   # W
-        data.append((packet[4] << 8) + packet[5])   # X
-        data.append((packet[8] << 8) + packet[9])   # Y
-        data.append((packet[12] << 8) + packet[13]) # Z   
+
+        data = {
+            'w' : ((packet[0] << 8) + packet[1]) / 16384.0,  
+            'x' : ((packet[4] << 8) + packet[5]) / 16384.0,
+            'y' : ((packet[8] << 8) + packet[9]) / 16384.0,
+            'z' : ((packet[12] << 8) + packet[13]) / 16384.0}        
         
         return data
     
@@ -913,15 +914,28 @@ class MPU6050:
         pass
     
     def dmpGetGravity(self, q):
-        pass
+        data = {
+            'x' : float(2 * (q['x'] * q['z'] - q['w'] * q['y'])),
+            'y' : float(2 * (q['w'] * q['x'] + q['y'] * q['z'])),
+            'z' : float(q['w'] * q['w'] - q['x'] * q['x'] - q['y'] * q['y'] + q['z'] + q['z'])}
+        
+        return data
     
-    def dmpGetYawPitchRoll(self, q):
-       pass
+    def dmpGetYawPitchRoll(self, q, g):
+        data = {
+            # yaw: (about Z axis)
+            'yaw' : atan2(2 * q['x'] * q['y'] - 2 * q['w'] * q['z'], 2 * q['w'] * q['w'] + 2 * q['x'] * q['x'] - 1),
+            # pitch: (nose up/down, about Y axis)
+            'pitch' : atan(g['x'] / sqrt(g['y'] * g['y'] + g['z'] * g['z'])),
+            # roll: (tilt left/right, about X axis)
+            'roll' : atan(g['y'] / sqrt(g['x'] * g['x'] + g['z'] * g['z']))}
+            
+        return data
  
     def dmpInitialize(self):
         # Resetting MPU6050
         self.reset()
-        time.sleep(0.05) # wait after reset
+        sleep(0.05) # wait after reset
         
         # Disable sleep mode
         self.setSleepEnabled(False)
@@ -952,14 +966,14 @@ class MPU6050:
         self.setI2CMasterModeEnabled(False) # Disabling I2C Master mode
         self.setSlaveAddress(0, 0x68) # Setting slave 0 address to 0x68 (self)
         self.resetI2CMaster() # Resetting I2C Master control
-        time.sleep(0.03)
+        sleep(0.03)
         
         # load DMP code into memory banks
-        self.writeMemoryBlock(self.dmpMemory, self.MPU6050_DMP_CODE_SIZE, 0, 0, True)
+        self.writeMemoryBlock(self.dmpMemory, self.MPU6050_DMP_CODE_SIZE, 0, 0, False)
         #print('Success! DMP code written and verified')
         
         # write DMP configuration
-        self.writeDMPConfigurationSet(self.dmpConfig, self.MPU6050_DMP_CONFIG_SIZE, 0, 0, True)
+        self.writeDMPConfigurationSet(self.dmpConfig, self.MPU6050_DMP_CONFIG_SIZE, 0, 0, False)
         #print('Success! DMP configuration written and verified')
         
         # Setting clock source to Z Gyro
@@ -969,7 +983,7 @@ class MPU6050:
         self.setIntEnabled(0x12)
         
         # Setting sample rate to 200Hz
-        self.setRate(4) # 1khz / (1 + 4) = 200 Hz
+        self.setRate(4) # 1khz / (1 + 4) = 200 Hz [9 = 100 Hz]
         
         # Setting external frame sync to TEMP_OUT_L[0]
         self.setExternalFrameSync(self.MPU6050_EXT_SYNC_TEMP_OUT_L)
