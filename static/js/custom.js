@@ -114,7 +114,7 @@ function aileron_marker(num) {
     $('div#aileron-status').html(num + '%');
 }
 
-function keypress(key) {
+function keypress(key) {;
     switch(key) {
         case 37:
             arrow_left();
@@ -139,7 +139,7 @@ function keypress(key) {
         break;
         case 87:
             key_w();
-        break;
+        break;            
     }
 }
 
