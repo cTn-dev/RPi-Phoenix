@@ -17,7 +17,7 @@ script_started = time.time()
 
 
 # Initialize serial object
-ser = serial.Serial('/dev/ttyUSB0', 115200) # address of my meduino nano
+ser = serial.Serial('/dev/ttyUSB0', 38400) # address of my meduino nano
 
 # Default Controller values that are served to front-end interface after initial load
 state = {

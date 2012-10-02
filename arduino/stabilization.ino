@@ -84,7 +84,7 @@ void setup() {
     Wire.begin();
     
     // Initialize serial communication
-    Serial.begin(115200);
+    Serial.begin(38400);
     while (!Serial); // wait for Leonardo enumeration, others continue immediately
 
     // Attach all of our servo objects to the correct pins
@@ -251,8 +251,8 @@ void loop() {
             }
 
             // empty buffers
-            memset(serial_buffer_command, 0, 10);
-            memset(serial_buffer_value, 0, 20);
+            memset(serial_buffer_command, 0, sizeof(serial_buffer_command));
+            memset(serial_buffer_value, 0, sizeof(serial_buffer_value));
         }
     }     
     
