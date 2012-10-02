@@ -3,8 +3,8 @@
 #include <Servo.h>
 
 // Custom library imports
-#include <PID_v1.h>
 #include <I2Cdev.h>
+#include "PID_v1.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 
 
@@ -51,8 +51,8 @@ int esc_4_speed = 1000;
 double yaw, pitch, roll, xPIDSpeed, yPIDSpeed, zPIDSpeed;
 
 double targetAngleYaw = 0.00;   // this is not finished (yet)
-double targetAnglePitch = 0.01; // tiny offset because of crooked mount
-double targetAngleRoll = -0.03; // same
+double targetAnglePitch = 0.01;
+double targetAngleRoll = -0.03;
 
 double Kp = 40.00;
 double Ki = 0.90;
@@ -206,48 +206,70 @@ void loop() {
             Serial.print(serial_buffer_value);
             Serial.println(F("|ACK"));            
             
-            // atoi() // string to integer
-            // atol() // string to long integer
-            // atof() // string to float/double
+            // atoi()   // string to integer
+            // atol()   // string to long integer
+            // atof()   // string to float/double
             // strtod() // string to double
             // strcmp() // string compared to string, 0 = strings match
+            // strtok() // split string into tokens
             
-            if (strcmp(serial_buffer_command, "1") == 0) {
-                // speed for ESC 1
-                esc_1_speed = atoi(serial_buffer_value);
-            } else if (strcmp(serial_buffer_command, "2") == 0) {
-                // speed for ESC 2
-                esc_2_speed = atoi(serial_buffer_value);
-            } else if (strcmp(serial_buffer_command, "3") == 0) {
-                // speed for ESC 3
-                esc_3_speed = atoi(serial_buffer_value);
-            } else if (strcmp(serial_buffer_command, "4") == 0) {
-                // speed for ESC 4
-                esc_4_speed = atoi(serial_buffer_value);
-            } else if (strcmp(serial_buffer_command, "yawPID") == 0) {
-                // split string into tokens
-                char * Kp_value = strtok(serial_buffer_value, ",");
-                char * Ki_value = strtok(NULL, ",");
-                char * Kd_value = strtok(NULL, ",");
-                
-                // apply the new PID settings
-                yaw_pid.SetTunings(atof(Kp_value), atof(Ki_value), atof(Kd_value));
-            } else if (strcmp(serial_buffer_command, "pitchPID") == 0) {
-                // split string into tokens
-                char * Kp_value = strtok(serial_buffer_value, ",");
-                char * Ki_value = strtok(NULL, ",");
-                char * Kd_value = strtok(NULL, ",");
-                
-                // apply the new PID settings
-                pitch_pid.SetTunings(atof(Kp_value), atof(Ki_value), atof(Kd_value));         
-            } else if (strcmp(serial_buffer_command, "rollPID") == 0) {
-                // split string into tokens
-                char * Kp_value = strtok(serial_buffer_value, ",");
-                char * Ki_value = strtok(NULL, ",");
-                char * Kd_value = strtok(NULL, ",");
-                
-                // apply the new PID settings
-                roll_pid.SetTunings(atof(Kp_value), atof(Ki_value), atof(Kd_value));
+            int command = atoi(serial_buffer_command);
+            
+            switch (command) {
+                case 1: // speed for ESC 1
+                    esc_1_speed = atoi(serial_buffer_value);
+                break;
+                case 2: // speed for ESC 2
+                    esc_2_speed = atoi(serial_buffer_value);
+                break;
+                case 3: // speed for ESC 3
+                    esc_3_speed = atoi(serial_buffer_value);
+                break;
+                case 4: // speed for ESC 4
+                    esc_4_speed = atoi(serial_buffer_value);
+                break;
+                case 5: // yaw PID SetPoint
+                    targetAngleYaw = atof(serial_buffer_value);
+                break;
+                case 6: // pitch PID SetPoint
+                    targetAnglePitch = atof(serial_buffer_value);
+                break;
+                case 7: // roll PID SetPoint
+                    targetAngleRoll = atof(serial_buffer_value);
+                break;                
+                case 8: // yaw PID tunings
+                {
+                    char * Kp_value = strtok(serial_buffer_value, ",");
+                    char * Ki_value = strtok(NULL, ",");
+                    char * Kd_value = strtok(NULL, ",");
+                    
+                    // apply the new PID settings
+                    yaw_pid.SetTunings(atof(Kp_value), atof(Ki_value), atof(Kd_value));  
+                }
+                break;
+                case 9: // pitch PID tunings
+                {
+                    char * Kp_value = strtok(serial_buffer_value, ",");
+                    char * Ki_value = strtok(NULL, ",");
+                    char * Kd_value = strtok(NULL, ",");
+                    
+                    // apply the new PID settings
+                    pitch_pid.SetTunings(atof(Kp_value), atof(Ki_value), atof(Kd_value));    
+                }
+                break;
+                case 10: // roll PID tunings
+                {
+                    char * Kp_value = strtok(serial_buffer_value, ",");
+                    char * Ki_value = strtok(NULL, ",");
+                    char * Kd_value = strtok(NULL, ",");
+                    
+                    // apply the new PID settings
+                    roll_pid.SetTunings(atof(Kp_value), atof(Ki_value), atof(Kd_value));     
+                }
+                break;
+                default:
+                    // error message
+                    Serial.println(F("Unrecognized command"));
             }
 
             // empty buffers
