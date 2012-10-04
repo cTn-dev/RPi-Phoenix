@@ -15,7 +15,7 @@ MPU6050 mpu;
 bool dmpReady = false;  // set true if DMP init was successful
 uint8_t mpuIntStatus;   // holds actual interrupt status byte from MPU
 uint8_t devStatus;      // return status after each device operation (0 = success, !0 = error)
-uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
+uint8_t packetSize;    // expected DMP packet size (default is 42 bytes)
 uint16_t fifoCount;     // count of all bytes currently in FIFO
 uint8_t fifoBuffer[64]; // FIFO storage buffer
 
@@ -27,7 +27,7 @@ double ypr[3];          // [yaw, pitch, roll]   yaw/pitch/roll container and gra
 // Serial variables
 char serial_buffer_command[10];      // used to storage command name
 char serial_buffer_value[20];        // used to storage command value
-int serial_com_i = 0;                // i used during serial communication
+int8_t serial_com_i = 0;                // i used during serial communication
 boolean serial_data = false;         // defines if we are receiveding command name or value
 boolean serial_com_complete = false; // goes true after receiving the delimeter character |
 
