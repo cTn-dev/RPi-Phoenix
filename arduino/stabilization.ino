@@ -37,15 +37,15 @@ Servo esc_2;
 Servo esc_3;
 Servo esc_4;
 
-int esc_1_pin = 6;  // rotor 1
-int esc_2_pin = 9;  // rotor 2
-int esc_3_pin = 10; // rotor 3
-int esc_4_pin = 11; // rotor 4
+#define esc_1_pin 6  // rotor 1
+#define esc_2_pin 9  // rotor 2
+#define esc_3_pin 10 // rotor 3
+#define esc_4_pin 11 // rotor 4
 
-int esc_1_speed = 1000;
-int esc_2_speed = 1000;
-int esc_3_speed = 1000;
-int esc_4_speed = 1000;
+uint16_t esc_1_speed = 1000;
+uint16_t esc_2_speed = 1000;
+uint16_t esc_3_speed = 1000;
+uint16_t esc_4_speed = 1000;
 
 // PID definitions
 double yaw, pitch, roll, xPIDSpeed, yPIDSpeed, zPIDSpeed;
@@ -63,7 +63,7 @@ PID pitch_pid(&ypr[1], &yPIDSpeed, &targetAnglePitch, Kp, Ki, Kd, DIRECT);
 PID roll_pid(&ypr[2], &xPIDSpeed, &targetAngleRoll, Kp, Ki, Kd, DIRECT);
 
 // Blinking LED to indicate activity
-int LED_PIN = 13;
+#define LED_PIN 13
 bool blinkState = false;
 
 // Interrupt detection routine
@@ -101,7 +101,7 @@ void setup() {
     esc_4.writeMicroseconds(1000); 
 
     // Initialize device
-    Serial.println(F("Initializing I2C devices..."));
+    Serial.println(F("Initializing I2C devices"));
     mpu.initialize();      
 
     // Define accelerometer offsets
@@ -112,26 +112,26 @@ void setup() {
     //mpu.setZAccelOffset(1648); // Default 1648
     
     // Verify connection
-    Serial.println(F("Testing device connections..."));
+    Serial.println(F("Testing device connections"));
     Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
    
     // load and configure the DMP
-    Serial.println(F("Initializing DMP..."));
+    Serial.println(F("Initializing DMP"));
     devStatus = mpu.dmpInitialize();   
     
     // make sure it worked (returns 0 if so)
     if (devStatus == 0) {        
         // turn on the DMP, now that it's ready
-        Serial.println(F("Enabling DMP..."));
+        Serial.println(F("Enabling DMP"));
         mpu.setDMPEnabled(true);
 
         // enable Arduino interrupt detection
-        Serial.println(F("Enabling interrupt detection (Arduino external interrupt 0)..."));
+        Serial.println(F("Enabling interrupt detection"));
         attachInterrupt(0, dmpDataReady, RISING);
         mpuIntStatus = mpu.getIntStatus();    
         
         // set our DMP Ready flag so the main loop() function knows it's okay to use it
-        Serial.println(F("DMP ready! Waiting for first interrupt..."));
+        Serial.println(F("DMP ready! Waiting for first interrupt"));
         dmpReady = true;
 
         // get expected DMP packet size for later comparison
@@ -220,16 +220,16 @@ void loop() {
             
             switch (command) {
                 case 1: // speed for ESC 1
-                    esc_1_speed = atoi(serial_buffer_value);
+                    esc_1_speed = (uint16_t) atoi(serial_buffer_value);
                 break;
                 case 2: // speed for ESC 2
-                    esc_2_speed = atoi(serial_buffer_value);
+                    esc_2_speed = (uint16_t) atoi(serial_buffer_value);
                 break;
                 case 3: // speed for ESC 3
-                    esc_3_speed = atoi(serial_buffer_value);
+                    esc_3_speed = (uint16_t) atoi(serial_buffer_value);
                 break;
                 case 4: // speed for ESC 4
-                    esc_4_speed = atoi(serial_buffer_value);
+                    esc_4_speed = (uint16_t) atoi(serial_buffer_value);
                 break;
                 case 5: // yaw PID SetPoint
                     targetAngleYaw = atof(serial_buffer_value);
