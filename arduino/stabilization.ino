@@ -25,10 +25,10 @@ VectorFloat gravity;    // [x, y, z]            gravity vector
 double ypr[3];          // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
 // Serial variables
-char serial_buffer_command[10]; // used to storage command name
-char serial_buffer_value[20];   // used to storage command value
-int serial_com_i = 0;           // i used during serial communication
-boolean serial_data = false;    // defines if we are receiveding command name or value
+char serial_buffer_command[10];      // used to storage command name
+char serial_buffer_value[20];        // used to storage command value
+int serial_com_i = 0;                // i used during serial communication
+boolean serial_data = false;         // defines if we are receiveding command name or value
 boolean serial_com_complete = false; // goes true after receiving the delimeter character |
 
 // Servo PWM objects & PIN definitions
@@ -58,12 +58,13 @@ double Kp = 40.00;
 double Ki = 0.90;
 double Kd = 18.00;
 
-// 70.0, 0.3, 32.0
-
 PID yaw_pid(&ypr[0], &zPIDSpeed, &targetAngleYaw, Kp, Ki, Kd, DIRECT);
 PID pitch_pid(&ypr[1], &yPIDSpeed, &targetAnglePitch, Kp, Ki, Kd, DIRECT);
 PID roll_pid(&ypr[2], &xPIDSpeed, &targetAngleRoll, Kp, Ki, Kd, DIRECT);
 
+// Blinking LED to indicate activity
+int LED_PIN = 13;
+bool blinkState = false;
 
 // Interrupt detection routine
 volatile bool mpuInterrupt = false; // indicates whether MPU interrupt pin has gone high
@@ -85,7 +86,6 @@ void setup() {
     
     // Initialize serial communication
     Serial.begin(38400);
-    while (!Serial); // wait for Leonardo enumeration, others continue immediately
 
     // Attach all of our servo objects to the correct pins
     Serial.println(F("Attaching servo control to ESC pins"));  
@@ -159,6 +159,9 @@ void setup() {
     roll_pid.SetOutputLimits(-100, 100);
     roll_pid.SetMode(AUTOMATIC);
     roll_pid.SetSampleTime(10);
+    
+    // Initialize the digital pin as output
+    pinMode(LED_PIN, OUTPUT);
     
     // Report FREE ram
     Serial.print(F("Free RAM: "));
@@ -316,9 +319,8 @@ void loop() {
             Serial.println(ypr[2]);
             */
             
-            /*
             // display Euler angles in degrees
-            Serial.print(F("ypr\t"));
+            /*
             Serial.print(ypr[0] * 180 / M_PI);
             Serial.print(F("\t"));
             Serial.print(ypr[1] * 180 / M_PI);
@@ -338,6 +340,8 @@ void loop() {
             esc_2.writeMicroseconds(esc_2_speed - yPIDSpeed - xPIDSpeed + zPIDSpeed);
             esc_3.writeMicroseconds(esc_3_speed - yPIDSpeed + xPIDSpeed - zPIDSpeed);
             esc_4.writeMicroseconds(esc_4_speed + yPIDSpeed + xPIDSpeed + zPIDSpeed);
-        } 
+        }
+        blinkState = !blinkState;
+        digitalWrite(LED_PIN, blinkState);
     }   
 }
