@@ -6,10 +6,12 @@
 #include <I2Cdev.h>
 #include "PID_v1.h"
 #include "MPU6050_6Axis_MotionApps20.h"
+#include "HMC5883L.h"
 
 
-// Create sensor object
+// Create sensor objects
 MPU6050 mpu;
+HMC5883L mag;
 
 // MPU control/status vars
 bool dmpReady = false;  // set true if DMP init was successful
@@ -23,6 +25,7 @@ uint8_t fifoBuffer[64]; // FIFO storage buffer
 Quaternion q;           // [w, x, y, z]         quaternion container
 VectorFloat gravity;    // [x, y, z]            gravity vector
 double ypr[3];          // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
+int16_t magv[3];        // [x, y, z]            magnetometer x/y/z
 
 // Serial variables
 char serial_buffer_command[10];      // used to storage command name
@@ -105,7 +108,8 @@ void setup() {
 
     // Initialize device
     Serial.println(F("Initializing I2C devices"));
-    mpu.initialize();      
+    mpu.initialize();    
+    mag.initialize();
 
     // Define accelerometer offsets
     // THIS IS the correct place where to apply accelerometer offsets
@@ -117,6 +121,7 @@ void setup() {
     // Verify connection
     Serial.println(F("Testing device connections"));
     Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
+    Serial.println(mag.testConnection() ? F("HMC5883L connection successful") : F("HMC5883L connection failed"));
    
     // load and configure the DMP
     Serial.println(F("Initializing DMP"));
@@ -309,10 +314,14 @@ void loop() {
             // (this lets us immediately read more without waiting for an interrupt)
             fifoCount -= packetSize;
 
+            // Get the latest magnetometer values
+            mag.getHeading(&magv[0], &magv[1], &magv[2]);            
+            
             // Calculate yaw/pitch/roll
             mpu.dmpGetQuaternion(&q, fifoBuffer);
             mpu.dmpGetGravity(&gravity, &q);
             mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);  
+            
             
             /*
             Serial.print(ypr[0]);
@@ -328,7 +337,13 @@ void loop() {
             Serial.print(F("\t"));
             Serial.print(ypr[1] * 180 / M_PI);
             Serial.print(F("\t"));
-            Serial.println(ypr[2] * 180 / M_PI);
+            Serial.print(ypr[2] * 180 / M_PI);
+            Serial.print(F("\t"));
+            Serial.print(magv[0]);
+            Serial.print(F("\t"));
+            Serial.print(magv[1]);
+            Serial.print(F("\t"));
+            Serial.println(magv[2]);
             */
             
             // only compute PID's if there is enough throttle
