@@ -27,6 +27,7 @@ double ypr[3];          // [yaw, pitch, roll]   yaw/pitch/roll container and gra
 // Serial variables
 char serial_buffer_command[10];      // used to storage command name
 char serial_buffer_value[20];        // used to storage command value
+uint8_t serial_command;
 int8_t serial_com_i = 0;                // i used during serial communication
 boolean serial_data = false;         // defines if we are receiveding command name or value
 boolean serial_com_complete = false; // goes true after receiving the delimeter character |
@@ -65,6 +66,8 @@ PID roll_pid(&ypr[2], &xPIDSpeed, &targetAngleRoll, Kp, Ki, Kd, DIRECT);
 // Blinking LED to indicate activity
 #define LED_PIN 13
 bool blinkState = false;
+long previousMillis = 0; // will store last time LED was updated
+long interval = 500;     // interval at which to blink (milliseconds)
 
 // Interrupt detection routine
 volatile bool mpuInterrupt = false; // indicates whether MPU interrupt pin has gone high
@@ -85,7 +88,7 @@ void setup() {
     Wire.begin();
     
     // Initialize serial communication
-    Serial.begin(38400);
+    Serial.begin(115200);
 
     // Attach all of our servo objects to the correct pins
     Serial.println(F("Attaching servo control to ESC pins"));  
@@ -216,9 +219,9 @@ void loop() {
             // strcmp() // string compared to string, 0 = strings match
             // strtok() // split string into tokens
             
-            int command = atoi(serial_buffer_command);
+            serial_command = (uint8_t) atoi(serial_buffer_command);
             
-            switch (command) {
+            switch (serial_command) {
                 case 1: // speed for ESC 1
                     esc_1_speed = (uint16_t) atoi(serial_buffer_value);
                 break;
@@ -274,7 +277,7 @@ void loop() {
                     // error message
                     Serial.println(F("Unrecognized command"));
             }
-
+            
             // empty buffers
             memset(serial_buffer_command, 0, sizeof(serial_buffer_command));
             memset(serial_buffer_value, 0, sizeof(serial_buffer_value));
@@ -298,14 +301,14 @@ void loop() {
             Serial.println(F("FIFO overflow!"));
 
             // otherwise, check for DMP data ready interrupt
-        } else if (mpuIntStatus & 0x02 && fifoCount >= packetSize) {            
+        } else if (mpuIntStatus & 0x02 && fifoCount >= packetSize) {  
             // read a packet from FIFO
             mpu.getFIFOBytes(fifoBuffer, packetSize);
             
             // Track FIFO count here in case there is > 1 packet available
             // (this lets us immediately read more without waiting for an interrupt)
             fifoCount -= packetSize;
-        
+
             // Calculate yaw/pitch/roll
             mpu.dmpGetQuaternion(&q, fifoBuffer);
             mpu.dmpGetGravity(&gravity, &q);
@@ -341,7 +344,14 @@ void loop() {
             esc_3.writeMicroseconds(esc_3_speed - yPIDSpeed + xPIDSpeed - zPIDSpeed);
             esc_4.writeMicroseconds(esc_4_speed + yPIDSpeed + xPIDSpeed + zPIDSpeed);
         }
+    }
+    // Blinking LED indicating the code is running properly
+    unsigned long currentMillis = millis();   
+    if(currentMillis - previousMillis > interval) {
+        // save the last time you blinked the LED 
+        previousMillis = currentMillis;
+        
         blinkState = !blinkState;
         digitalWrite(LED_PIN, blinkState);
-    }   
+    }    
 }
