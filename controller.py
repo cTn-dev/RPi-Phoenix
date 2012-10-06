@@ -12,9 +12,9 @@ import tornado.escape
 import config
 import serial
 
+
 # Time Tracking
 script_started = time.time()
-
 
 # Initialize serial object
 ser = serial.Serial('/dev/ttyAMA0', 115200) # address of my meduino nano
@@ -63,12 +63,9 @@ def controll(name, value):
     global state
     global rotors
     
-    # Temporary objects
-    state_temporary = dict(state)   
-    rotors_temporary = dict(rotors)
-    
     # New value
-    state_temporary[name] = value
+    if value >= -100 and value <= 100: # Protection against an itter lag on the client side
+        state[name] = value
     
     # Controls are applied in layers
     # Current priority is	
@@ -79,83 +76,77 @@ def controll(name, value):
     # 4. aileron
     
     # throttle
-    rotors_temporary['rotor-1'] = state_temporary['throttle']
-    rotors_temporary['rotor-2'] = state_temporary['throttle']
-    rotors_temporary['rotor-3'] = state_temporary['throttle']
-    rotors_temporary['rotor-4'] = state_temporary['throttle']
+    rotors['rotor-1'] = state['throttle']
+    rotors['rotor-2'] = state['throttle']
+    rotors['rotor-3'] = state['throttle']
+    rotors['rotor-4'] = state['throttle']
     
     
     # Flight Modes
     
     # X Flight Mode
     if config.flight_mode == 'x':
-        if state_temporary['elevator'] == 0:
+        if state['elevator'] == 0:
             pass
-        elif state_temporary['elevator'] > 0:
-            rotors_temporary['rotor-3'] += state_temporary['elevator'] 
-            rotors_temporary['rotor-4'] += state_temporary['elevator']
-        elif state_temporary['elevator'] < 0:
-            rotors_temporary['rotor-1'] += abs(state_temporary['elevator'])
-            rotors_temporary['rotor-2'] += abs(state_temporary['elevator'])
+        elif state['elevator'] > 0:
+            rotors['rotor-3'] += state['elevator'] 
+            rotors['rotor-4'] += state['elevator']
+        elif state['elevator'] < 0:
+            rotors['rotor-1'] += abs(state['elevator'])
+            rotors['rotor-2'] += abs(state['elevator'])
         
-        if state_temporary['rudder'] == 0:
+        if state['rudder'] == 0:
             pass
-        elif state_temporary['rudder'] > 0:
-            rotors_temporary['rotor-2'] += state_temporary['rudder']
-            rotors_temporary['rotor-4'] += state_temporary['rudder']
-        elif state_temporary['rudder'] < 0:
-            rotors_temporary['rotor-1'] += abs(state_temporary['rudder']) 
-            rotors_temporary['rotor-3'] += abs(state_temporary['rudder'])
+        elif state['rudder'] > 0:
+            rotors['rotor-2'] += state['rudder']
+            rotors['rotor-4'] += state['rudder']
+        elif state['rudder'] < 0:
+            rotors['rotor-1'] += abs(state['rudder']) 
+            rotors['rotor-3'] += abs(state['rudder'])
         
-        if state_temporary['aileron'] == 0:
+        if state['aileron'] == 0:
             pass
-        elif state_temporary['aileron'] > 0:
-            rotors_temporary['rotor-1'] += state_temporary['aileron']
-            rotors_temporary['rotor-4'] += state_temporary['aileron']
-        elif state_temporary['aileron'] < 0:        
-            rotors_temporary['rotor-2'] += abs(state_temporary['aileron'])
-            rotors_temporary['rotor-3'] += abs(state_temporary['aileron'])
+        elif state['aileron'] > 0:
+            rotors['rotor-1'] += state['aileron']
+            rotors['rotor-4'] += state['aileron']
+        elif state['aileron'] < 0:        
+            rotors['rotor-2'] += abs(state['aileron'])
+            rotors['rotor-3'] += abs(state['aileron'])
     
     # + Flight Mode
     elif config.flight_mode == '+':
-        if state_temporary['elevator'] == 0:
+        if state['elevator'] == 0:
             pass
-        elif state_temporary['elevator'] > 0:
-            rotors_temporary['rotor-3'] += state_temporary['elevator']    
-        elif state_temporary['elevator'] < 0:
-            rotors_temporary['rotor-1'] += abs(state_temporary['elevator'])
+        elif state['elevator'] > 0:
+            rotors['rotor-3'] += state['elevator']    
+        elif state['elevator'] < 0:
+            rotors['rotor-1'] += abs(state['elevator'])
         
-        if state_temporary['rudder'] == 0:
+        if state['rudder'] == 0:
             pass
-        elif state_temporary['rudder'] > 0:
-            rotors_temporary['rotor-2'] += state_temporary['rudder']
-            rotors_temporary['rotor-4'] += state_temporary['rudder']
-        elif state_temporary['rudder'] < 0:
-            rotors_temporary['rotor-1'] += abs(state_temporary['rudder']) 
-            rotors_temporary['rotor-3'] += abs(state_temporary['rudder'])
+        elif state['rudder'] > 0:
+            rotors['rotor-2'] += state['rudder']
+            rotors['rotor-4'] += state['rudder']
+        elif state['rudder'] < 0:
+            rotors['rotor-1'] += abs(state['rudder']) 
+            rotors['rotor-3'] += abs(state['rudder'])
         
-        if state_temporary['aileron'] == 0:
+        if state['aileron'] == 0:
             pass
-        elif state_temporary['aileron'] > 0:            
-            rotors_temporary['rotor-4'] += state_temporary['aileron']
-        elif state_temporary['aileron'] < 0:        
-            rotors_temporary['rotor-2'] += abs(state_temporary['aileron'])
+        elif state['aileron'] > 0:            
+            rotors['rotor-4'] += state['aileron']
+        elif state['aileron'] < 0:        
+            rotors['rotor-2'] += abs(state['aileron'])
     
     
-    for val in rotors_temporary.values():
-        # Protection loop (no values below 0 are allowed)
-        if val < 0 or val > 100:
-            print("You can't do that !!! " + name + ' ' + str(val))
-            
-            # Return False back to the UI
-            return False
-            
-    # all went fine
-    # update global objects with latest data
-    state[name] = value
-    rotors = dict(rotors_temporary)
+    for (key, value) in rotors.iteritems():
+        # Protection loop (no values below 0 and bigger then 100 are allowed)
+        if value < 0:
+            rotors[key] = 0
+        elif value > 100:
+            rotors[key] = 100
     
-    # execute rotor_handler (so the latest changes would be applied immediatly)
+    # execute rotor_handler (latest changes will be applied immediatly)
     rotor_handler()
 
     # Return True that will be passed back to the UI
@@ -164,7 +155,7 @@ def controll(name, value):
 
 def connection_lost():
     # this is an emergency function that should stabilize the copter in the air & wait for connection to be re-established
-    print('No activity in last 5 seconds, did we lost connection to the client?')
+    print('No activity in last 10 seconds, did we lost connection to the client?')
     
     # reset all of the controls except throttle to 0
     state['rudder'] = 0
@@ -212,7 +203,7 @@ class AliveHandler(tornado.web.RequestHandler):
         if AliveHandler.connection_status:
             tornado.ioloop.IOLoop.instance().remove_timeout(AliveHandler.connection_status)
 
-        AliveHandler.connection_status = tornado.ioloop.IOLoop.instance().add_timeout(time.time() + 5, connection_lost)
+        AliveHandler.connection_status = tornado.ioloop.IOLoop.instance().add_timeout(time.time() + 10, connection_lost)
 
     
 print('Starting QuadRotor Remote Control Interface ...')

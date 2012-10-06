@@ -68,9 +68,9 @@ PID roll_pid(&ypr[2], &xPIDSpeed, &targetAngleRoll, Kp, Ki, Kd, DIRECT);
 
 // Blinking LED to indicate activity
 #define LED_PIN 13
+#define BLINK_INTERVAL 500 // interval at which to blink (milliseconds)
 bool blinkState = false;
-long previousMillis = 0; // will store last time LED was updated
-long interval = 500;     // interval at which to blink (milliseconds)
+long previousMillis = 0;  // will store last time LED was updated
 
 // Interrupt detection routine
 volatile bool mpuInterrupt = false; // indicates whether MPU interrupt pin has gone high
@@ -362,7 +362,7 @@ void loop() {
     }
     // Blinking LED indicating the code is running properly
     unsigned long currentMillis = millis();   
-    if(currentMillis - previousMillis > interval) {
+    if(currentMillis - previousMillis > BLINK_INTERVAL) {
         // save the last time you blinked the LED 
         previousMillis = currentMillis;
         
