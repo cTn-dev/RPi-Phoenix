@@ -46,21 +46,26 @@ Servo esc_4;
 #define esc_3_pin 10 // rotor 3
 #define esc_4_pin 11 // rotor 4
 
-uint16_t esc_1_speed = 1000;
-uint16_t esc_2_speed = 1000;
-uint16_t esc_3_speed = 1000;
-uint16_t esc_4_speed = 1000;
+// Controller variables
+int8_t throttle = 0;
+int8_t rudder   = 0;
+int8_t elevator = 0;
+int8_t aileron  = 0;
 
 // PID definitions
 double yaw, pitch, roll, xPIDSpeed, yPIDSpeed, zPIDSpeed;
 
-double targetAngleYaw = 0.00;   // this is not finished (yet)
-double targetAnglePitch = 0.01;
-double targetAngleRoll = -0.03;
+double offsetAngleYaw   = 0.00;
+double offsetAnglePitch = -0.02; // Sensor offset for maggie
+double offsetAngleRoll  = 0.00;
 
-double Kp = 40.00;
-double Ki = 0.90;
-double Kd = 18.00;
+double targetAngleYaw   = 0.00;
+double targetAnglePitch = 0.00;
+double targetAngleRoll  = 0.00;
+
+double Kp = 39.00;
+double Ki = 10.00;
+double Kd = 35.00;
 
 PID yaw_pid(&ypr[0], &zPIDSpeed, &targetAngleYaw, Kp, Ki, Kd, DIRECT);
 PID pitch_pid(&ypr[1], &yPIDSpeed, &targetAnglePitch, Kp, Ki, Kd, DIRECT);
@@ -156,15 +161,15 @@ void setup() {
     }
     
     // PID settings & limits
-    yaw_pid.SetOutputLimits(-40, 40);
+    yaw_pid.SetOutputLimits(-20, 20);
     yaw_pid.SetMode(AUTOMATIC);
     yaw_pid.SetSampleTime(10);
     
-    pitch_pid.SetOutputLimits(-100, 100);
+    pitch_pid.SetOutputLimits(-1000, 1000);
     pitch_pid.SetMode(AUTOMATIC);
     pitch_pid.SetSampleTime(10);
     
-    roll_pid.SetOutputLimits(-100, 100);
+    roll_pid.SetOutputLimits(-1000, 1000);
     roll_pid.SetMode(AUTOMATIC);
     roll_pid.SetSampleTime(10);
     
@@ -227,26 +232,36 @@ void loop() {
             serial_command = (uint8_t) atoi(serial_buffer_command);
             
             switch (serial_command) {
-                case 1: // speed for ESC 1
-                    esc_1_speed = (uint16_t) atoi(serial_buffer_value);
+                case 1: // throttle
+                    throttle = (int8_t) atoi(serial_buffer_value);
+                    
+                    targetAngleYaw = (rudder / 180 * M_PI) + offsetAngleYaw;
+                    targetAnglePitch = (elevator / 180 * M_PI) + offsetAnglePitch;
+                    targetAngleRoll = (aileron / 180 * M_PI) + offsetAngleRoll;
                 break;
-                case 2: // speed for ESC 2
-                    esc_2_speed = (uint16_t) atoi(serial_buffer_value);
+                case 2: // rudder
+                    rudder = (int8_t) atoi(serial_buffer_value);
+                    targetAngleYaw = (rudder / 180 * M_PI) + offsetAngleYaw;
                 break;
-                case 3: // speed for ESC 3
-                    esc_3_speed = (uint16_t) atoi(serial_buffer_value);
+                case 3: // elevator
+                    elevator = (int8_t) atoi(serial_buffer_value);
+                    targetAnglePitch = (elevator / 180 * M_PI) + offsetAnglePitch;
                 break;
-                case 4: // speed for ESC 4
-                    esc_4_speed = (uint16_t) atoi(serial_buffer_value);
+                case 4: // aileron
+                    aileron = (int8_t) atoi(serial_buffer_value);
+                    targetAngleRoll = (aileron / 180 * M_PI) + offsetAngleRoll;
                 break;
-                case 5: // yaw PID SetPoint
-                    targetAngleYaw = atof(serial_buffer_value);
+                case 5: // yaw PID offset
+                    offsetAngleYaw = atof(serial_buffer_value);
+                    targetAngleYaw = (rudder / 180 * M_PI) + offsetAngleYaw;
                 break;
-                case 6: // pitch PID SetPoint
-                    targetAnglePitch = atof(serial_buffer_value);
+                case 6: // pitch PID offset
+                    offsetAnglePitch = atof(serial_buffer_value);
+                    targetAnglePitch = (elevator / 180 * M_PI) + offsetAnglePitch;
                 break;
-                case 7: // roll PID SetPoint
-                    targetAngleRoll = atof(serial_buffer_value);
+                case 7: // roll PID offset
+                    offsetAngleRoll = atof(serial_buffer_value);
+                    targetAngleRoll = (aileron / 180 * M_PI) + offsetAngleRoll;
                 break;                
                 case 8: // yaw PID tunings
                 {
@@ -347,20 +362,20 @@ void loop() {
             */
             
             // only compute PID's if there is enough throttle
-            if (esc_1_speed > 1100) {            
+            if (throttle > 10) {            
                 yaw_pid.Compute();
                 pitch_pid.Compute();
                 roll_pid.Compute();
             }
             
             // range should be from 1000 to 2000
-            esc_1.writeMicroseconds(esc_1_speed + yPIDSpeed - xPIDSpeed - zPIDSpeed);
-            esc_2.writeMicroseconds(esc_2_speed - yPIDSpeed - xPIDSpeed + zPIDSpeed);
-            esc_3.writeMicroseconds(esc_3_speed - yPIDSpeed + xPIDSpeed - zPIDSpeed);
-            esc_4.writeMicroseconds(esc_4_speed + yPIDSpeed + xPIDSpeed + zPIDSpeed);
+            esc_1.writeMicroseconds(1000 + (throttle * 10) - yPIDSpeed - xPIDSpeed - zPIDSpeed);
+            esc_2.writeMicroseconds(1000 + (throttle * 10) - yPIDSpeed + xPIDSpeed + zPIDSpeed);
+            esc_3.writeMicroseconds(1000 + (throttle * 10) + yPIDSpeed + xPIDSpeed - zPIDSpeed);
+            esc_4.writeMicroseconds(1000 + (throttle * 10) + yPIDSpeed - xPIDSpeed + zPIDSpeed);
         }
     }
-    // Blinking LED indicating the code is running properly
+    // Blinking LED indicating
     unsigned long currentMillis = millis();   
     if(currentMillis - previousMillis > BLINK_INTERVAL) {
         // save the last time you blinked the LED 

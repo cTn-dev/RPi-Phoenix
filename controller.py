@@ -26,13 +26,6 @@ state = {
     'elevator' : 0,
     'aileron'  : 0}
 
-# Raw rotor "load" that are applied via rotor_handler    
-rotors = {
-    'rotor-1' : 0,
-    'rotor-2' : 0,
-    'rotor-3' : 0,
-    'rotor-4' : 0}
-
 # Function definitions      
 class Duller(object):
     # Duller Class (used to smooth out values)  
@@ -52,101 +45,26 @@ class Duller(object):
 def rotor_handler():
     # all the rotor speeds are served via serila to our arduino
     # 1000 represents 1ms (which is the lowest acceptable value for ESCs)
-    ser.write('1:' + str(1000 + (rotors['rotor-1'] * 10))  + '|')
-    ser.write('2:' + str(1000 + (rotors['rotor-2'] * 10))  + '|')
-    ser.write('3:' + str(1000 + (rotors['rotor-3'] * 10))  + '|')
-    ser.write('4:' + str(1000 + (rotors['rotor-4'] * 10))  + '|')
+    ser.write('1:' + str(state['throttle']) + '|')
+    ser.write('2:' + str(state['rudder'])  + '|')
+    ser.write('3:' + str(state['elevator']) + '|')
+    ser.write('4:' + str(state['aileron'])  + '|')
 
     
 # Main flight control
 def controll(name, value):
     global state
-    global rotors
     
+    if name == 'aileron':
+        if value < 0:
+            value = abs(value)
+        elif value > 0:
+            value = -value
+
     # New value
     if value >= -100 and value <= 100: # Protection against an itter lag on the client side
         state[name] = value
-    
-    # Controls are applied in layers
-    # Current priority is	
-    #
-    # 1. throttle
-    # 2. elevator
-    # 3. rudder
-    # 4. aileron
-    
-    # throttle
-    rotors['rotor-1'] = state['throttle']
-    rotors['rotor-2'] = state['throttle']
-    rotors['rotor-3'] = state['throttle']
-    rotors['rotor-4'] = state['throttle']
-    
-    
-    # Flight Modes
-    
-    # X Flight Mode
-    if config.flight_mode == 'x':
-        if state['elevator'] == 0:
-            pass
-        elif state['elevator'] > 0:
-            rotors['rotor-3'] += state['elevator'] 
-            rotors['rotor-4'] += state['elevator']
-        elif state['elevator'] < 0:
-            rotors['rotor-1'] += abs(state['elevator'])
-            rotors['rotor-2'] += abs(state['elevator'])
-        
-        if state['rudder'] == 0:
-            pass
-        elif state['rudder'] > 0:
-            rotors['rotor-2'] += state['rudder']
-            rotors['rotor-4'] += state['rudder']
-        elif state['rudder'] < 0:
-            rotors['rotor-1'] += abs(state['rudder']) 
-            rotors['rotor-3'] += abs(state['rudder'])
-        
-        if state['aileron'] == 0:
-            pass
-        elif state['aileron'] > 0:
-            rotors['rotor-1'] += state['aileron']
-            rotors['rotor-4'] += state['aileron']
-        elif state['aileron'] < 0:        
-            rotors['rotor-2'] += abs(state['aileron'])
-            rotors['rotor-3'] += abs(state['aileron'])
-    
-    # + Flight Mode
-    elif config.flight_mode == '+':
-        if state['elevator'] == 0:
-            pass
-        elif state['elevator'] > 0:
-            rotors['rotor-3'] += state['elevator']    
-        elif state['elevator'] < 0:
-            rotors['rotor-1'] += abs(state['elevator'])
-        
-        if state['rudder'] == 0:
-            pass
-        elif state['rudder'] > 0:
-            rotors['rotor-2'] += state['rudder']
-            rotors['rotor-4'] += state['rudder']
-        elif state['rudder'] < 0:
-            rotors['rotor-1'] += abs(state['rudder']) 
-            rotors['rotor-3'] += abs(state['rudder'])
-        
-        if state['aileron'] == 0:
-            pass
-        elif state['aileron'] > 0:            
-            rotors['rotor-4'] += state['aileron']
-        elif state['aileron'] < 0:        
-            rotors['rotor-2'] += abs(state['aileron'])
-    
-    
-    for (key, value) in rotors.iteritems():
-        # Protection loop (no values below 0 and bigger then 100 are allowed)
-        if value < 0:
-            rotors[key] = 0
-        elif value > 100:
-            rotors[key] = 100
-    
-    # execute rotor_handler (latest changes will be applied immediatly)
+
     rotor_handler()
 
     # Return True that will be passed back to the UI
@@ -161,12 +79,6 @@ def connection_lost():
     state['rudder'] = 0
     state['elevator'] = 0
     state['aileron'] = 0
-    
-    # set the copter into "static" mode until connection is restored
-    rotors['rotor-1'] = state['throttle']
-    rotors['rotor-2'] = state['throttle']
-    rotors['rotor-3'] = state['throttle']
-    rotors['rotor-4'] = state['throttle']
     
     # update our rotors
     rotor_handler()
