@@ -17,7 +17,7 @@ import serial
 script_started = time.time()
 
 # Initialize serial object
-ser = serial.Serial('/dev/ttyAMA0', 115200) # address of my meduino nano
+ser = serial.Serial('/dev/ttyAMA0', 115200, timeout = 1) # address of my meduino nano
 
 # Default Controller values that are served to front-end interface after initial load
 state = {
@@ -107,6 +107,11 @@ class CurrentStateHandler(tornado.web.RequestHandler):
     def get(self):
         self.finish(tornado.escape.json_encode(state))
 
+class BatteryStatusHandler(tornado.web.RequestHandler):
+    def get(self):
+        ser.write('[11:0]')
+        data = ser.readline()
+        self.finish(data[4:][:4])
 
 class AliveHandler(tornado.web.RequestHandler):  
     connection_status = None
@@ -125,6 +130,7 @@ server = tornado.web.Application([
     (r'/static/(.*)', tornado.web.StaticFileHandler, {'path': './static'}),
     (r'/command/(throttle|rudder|elevator|aileron)/(-?[0-9]+)', CommandHandler),
     (r'/state', CurrentStateHandler),
+    (r'/battery', BatteryStatusHandler),
     (r'/alive', AliveHandler)
 ])
 

@@ -3,10 +3,10 @@
 #include <Servo.h>
 
 // Custom library imports
-#include <I2Cdev.h>
+#include "I2Cdev.h"
 #include "PID_v1.h"
-#include "MPU6050_6Axis_MotionApps20.h"
 #include "HMC5883L.h"
+#include "MPU6050_6Axis_MotionApps20.h"
 
 
 // Create sensor objects
@@ -70,6 +70,11 @@ double Kd = 35.00;
 PID yaw_pid(&ypr[0], &zPIDSpeed, &targetAngleYaw, Kp, Ki, Kd, DIRECT);
 PID pitch_pid(&ypr[1], &yPIDSpeed, &targetAnglePitch, Kp, Ki, Kd, DIRECT);
 PID roll_pid(&ypr[2], &xPIDSpeed, &targetAngleRoll, Kp, Ki, Kd, DIRECT);
+
+// Measure battery voltage
+#define BATTERY_V_PIN A0
+uint16_t sensor_battery_voltage;
+float battery_voltage;
 
 // Blinking LED to indicate activity
 #define LED_PIN 13
@@ -190,8 +195,15 @@ void loop() {
         // serial_data = false, we are reading command
         if (serial_data == false) {
             serial_buffer_command[serial_com_i] = Serial.read();
-            
-            if (serial_buffer_command[serial_com_i] == ':') {
+
+            if (serial_buffer_command[serial_com_i] == '[') {
+                // this piece of code protects the command and data from being hi-jacked by some
+                // left over data in the Serial.read(), it drops everything in the buffer prior
+                // to the "wrapper-character"
+                
+                memset(serial_buffer_command, 0, sizeof(serial_buffer_command));
+                serial_com_i = -1;
+            } else if (serial_buffer_command[serial_com_i] == ':') {
                 serial_buffer_command[serial_com_i] = '\0';
                 
                 // We read the last char coressponding to command
@@ -200,8 +212,8 @@ void loop() {
             }                       
         } else if (serial_data == true) {
             serial_buffer_value[serial_com_i] = Serial.read();
-            
-            if (serial_buffer_value[serial_com_i] == '|') {
+
+            if (serial_buffer_value[serial_com_i] == ']') {
                 serial_buffer_value[serial_com_i] = '\0';
                 
                 // We read the last char corresponding to value and transmission
@@ -217,10 +229,8 @@ void loop() {
             serial_data = false;
             serial_com_complete = false;
             
-            Serial.print(serial_buffer_command); 
-            Serial.print(F(":"));  
-            Serial.print(serial_buffer_value);
-            Serial.println(F("|ACK"));            
+            //Serial.print(serial_buffer_command); 
+            //Serial.print(serial_buffer_value);
             
             // atoi()   // string to integer
             // atol()   // string to long integer
@@ -292,6 +302,16 @@ void loop() {
                     // apply the new PID settings
                     roll_pid.SetTunings(atof(Kp_value), atof(Ki_value), atof(Kd_value));     
                 }
+                break;
+                case 11: // request battery voltage
+                    sensor_battery_voltage = analogRead(BATTERY_V_PIN);
+                    battery_voltage = sensor_battery_voltage * (5.0 / 1023.0);
+                    
+                    Serial.print(F("["));
+                    Serial.print(11);
+                    Serial.print(F(":"));
+                    Serial.print(battery_voltage);
+                    Serial.println(F("]"));
                 break;
                 default:
                     // error message

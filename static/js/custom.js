@@ -1,5 +1,6 @@
 $(document).ready(function() {     
     alive_refference = setInterval("alive()", 4000);
+    battery_refference = setInterval("battery_status()", 10000);
     
     div_throttle = $('div#throttle');
     div_rudder = $('div#rudder');
@@ -7,8 +8,9 @@ $(document).ready(function() {
     div_elevator = $('div#elevator');
     div_aileron = $('div#aileron');
     
-    // request current state
+    // request current state and current battery status
     values_state();
+    battery_status();
     
     $(document).keydown(function(event) {
         if(keys_down[event.which] == undefined) {
@@ -76,7 +78,15 @@ function alive() {
             alive_error = 1;
         }
     });  
-}  
+} 
+
+function battery_status() {
+    $.ajax('/battery', {
+        success: function(data) {
+            $('div#info span.battery').html(data);
+        }
+    });    
+} 
     
 function throttle_marker(num) {
     var e = div_throttle;
