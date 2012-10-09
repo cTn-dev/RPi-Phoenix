@@ -45,10 +45,10 @@ class Duller(object):
 def rotor_handler():
     # all the rotor speeds are served via serila to our arduino
     # 1000 represents 1ms (which is the lowest acceptable value for ESCs)
-    ser.write('1:' + str(state['throttle']) + '|')
-    ser.write('2:' + str(state['rudder'])  + '|')
-    ser.write('3:' + str(state['elevator']) + '|')
-    ser.write('4:' + str(state['aileron'])  + '|')
+    ser.write('[1:' + str(state['throttle']) + ']')
+    ser.write('[2:' + str(state['rudder'])  + ']')
+    ser.write('[3:' + str(state['elevator']) + ']')
+    ser.write('[4:' + str(state['aileron'])  + ']')
 
     
 # Main flight control
